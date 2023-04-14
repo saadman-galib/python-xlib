@@ -18,12 +18,11 @@ class CmpArray(object):
         return len(self.array)
 
     def __getitem__(self, key):
-        if isinstance(key, slice):
-            x = key.start
-            y = key.stop
-            return list(self.array[x:y])
-        else:
-            return self.array[key]
+        return (
+            list(self.array[key.start : key.stop])
+            if isinstance(key, slice)
+            else self.array[key]
+        )
 
     def __getattr__(self, attr):
         return getattr(self.array, attr)
@@ -68,10 +67,10 @@ class LittleEndianTest(TestCase):
 
 
 def tohex(bin):
-    hex = []
-    for i in range(0, len(bin), 16):
-        hex.append(str(binascii.hexlify(bin[i:i+16])) + '\n')
-    return hex
+    return [
+        str(binascii.hexlify(bin[i : i + 16])) + '\n'
+        for i in range(0, len(bin), 16)
+    ]
 
 def bindiff(bin1, bin2):
     hex1 = tohex(bin1)

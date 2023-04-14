@@ -39,10 +39,7 @@ def read_defs():
     for line in sys.stdin.readlines():
         parts = line.strip().split()
 
-        fields = []
-        for f in parts[2:]:
-            fields.append(f.split(':'))
-
+        fields = [f.split(':') for f in parts[2:]]
         if parts[0] == 'REQUEST':
             request_defs[parts[1]] = fields
         elif parts[0] == 'MINIREQUEST':
@@ -58,11 +55,7 @@ def read_defs():
 
 
 def build():
-    if struct.unpack('BB', struct.pack('H', 0x0100))[0]:
-        endian = 'be'
-    else:
-        endian = 'le'
-
+    endian = 'be' if struct.unpack('BB', struct.pack('H', 0x0100))[0] else 'le'
     read_defs()
 
     build_request(endian)
@@ -70,108 +63,102 @@ def build():
 
 
 def build_request(endian):
-    fc = open('genrequest.c', 'w')
+    with open('genrequest.c', 'w') as fc:
+        fc.write(C_HEADER)
 
-    fc.write(C_HEADER)
+        reqlist = list(request.major_codes.items())
+        reqlist.sort(key=lambda x: x[0])
 
-    reqlist = list(request.major_codes.items())
-    reqlist.sort(key=lambda x: x[0])
+        genfuncs = []
+        req_args = {}
+        reply_args = {}
 
-    genfuncs = []
-    req_args = {}
-    reply_args = {}
+        for code, req in reqlist:
+            name = req.__name__
+            creqname = name
 
-    for code, req in reqlist:
-        name = req.__name__
-        creqname = name
+            cdefs = request_defs.get(name)
+            if cdefs is None:
+                cdefs = mini_request_defs.get(name)
+                creqname = ''
+            if cdefs is None:
+                cdefs = resource_request_defs.get(name)
+                creqname = 'Resource'
 
-        cdefs = request_defs.get(name)
-        if cdefs is None:
-            cdefs = mini_request_defs.get(name)
-            creqname = ''
-        if cdefs is None:
-            cdefs = resource_request_defs.get(name)
-            creqname = 'Resource'
-
-        creqname = 'x%sReq' % creqname
-
-        if cdefs is None:
-            sys.stderr.write('missing def for request: %s\n' % name)
-        else:
-            vardefs = request_var_defs.get(name, [()])
-            if type(vardefs) is not list:
-                vardefs = [vardefs]
-
-            i = 0
-            for v in vardefs:
-                if i > 0:
-                    uname = name + str(i)
-                else:
-                    uname = name
-
-                try:
-                    req_args[uname] = gen_func(fc,
-                                              'genrequest_' + uname,
-                                              creqname,
-                                              'REQUEST ' + uname,
-                                              req._request,
-                                              cdefs,
-                                              v)
-                except:
-                    sys.stderr.write('Error in %s request\n' % uname)
-                    raise
-
-                genfuncs.append('genrequest_' + uname)
-                i = i + 1
-
-        if issubclass(req, rq.ReplyRequest):
-            cdefs = reply_defs.get(name)
+            creqname = f'x{creqname}Req'
 
             if cdefs is None:
-                sys.stderr.write('missing def for reply: %s\n' % name)
+                sys.stderr.write('missing def for request: %s\n' % name)
             else:
-                vardefs = reply_var_defs.get(name, ())
+                vardefs = request_var_defs.get(name, [()])
                 if type(vardefs) is not list:
                     vardefs = [vardefs]
 
                 i = 0
                 for v in vardefs:
-                    if i > 0:
-                        uname = name + str(i)
-                    else:
-                        uname = name
-
+                    uname = name + str(i) if i > 0 else name
                     try:
-                        reply_args[uname] = gen_func(fc,
-                                                     'genreply_' + uname,
-                                                     'x%sReply' % name,
-                                                     'REPLY ' + uname,
-                                                     req._reply,
-                                                     cdefs,
-                                                     v)
+                        req_args[uname] = gen_func(
+                            fc,
+                            f'genrequest_{uname}',
+                            creqname,
+                            f'REQUEST {uname}',
+                            req._request,
+                            cdefs,
+                            v,
+                        )
                     except:
-                        sys.stderr.write('Error in %s reply\n' % uname)
+                        sys.stderr.write('Error in %s request\n' % uname)
                         raise
 
-                    genfuncs.append('genreply_' + uname)
+                    genfuncs.append(f'genrequest_{uname}')
                     i = i + 1
 
+            if issubclass(req, rq.ReplyRequest):
+                cdefs = reply_defs.get(name)
 
-    fc.write('''
+                if cdefs is None:
+                    sys.stderr.write('missing def for reply: %s\n' % name)
+                else:
+                    vardefs = reply_var_defs.get(name, ())
+                    if type(vardefs) is not list:
+                        vardefs = [vardefs]
+
+                    i = 0
+                    for v in vardefs:
+                        uname = name + str(i) if i > 0 else name
+                        try:
+                            reply_args[uname] = gen_func(
+                                fc,
+                                f'genreply_{uname}',
+                                f'x{name}Reply',
+                                f'REPLY {uname}',
+                                req._reply,
+                                cdefs,
+                                v,
+                            )
+                        except:
+                            sys.stderr.write('Error in %s reply\n' % uname)
+                            raise
+
+                        genfuncs.append(f'genreply_{uname}')
+                        i = i + 1
+
+
+        fc.write('''
 
     int main(void)
     {
     ''')
 
-    for gf in genfuncs:
-        fc.write('      %s();\n' % gf)
+        for gf in genfuncs:
+            fc.write('      %s();\n' % gf)
 
-    fc.write('''
+        fc.write('''
       return 0;
     }
     ''')
 
-    fc.close()
     os.system('gcc -Wall -g genrequest.c -o genrequest')
 
     req_bins = {}
@@ -184,8 +171,8 @@ def build_request(endian):
         elif parts[0] == 'REPLY':
             reply_bins[parts[1]] = parts[2]
 
-    fpy = open('../test_requests_%s.py' % endian, 'w')
-    os.chmod('../test_requests_%s.py' % endian, 0o755)
+    fpy = open(f'../test_requests_{endian}.py', 'w')
+    os.chmod(f'../test_requests_{endian}.py', 0o755)
 
     if endian == 'be':
         e = 'BigEndian'
@@ -206,11 +193,7 @@ def build_request(endian):
         reqs = -1
         replies = -1
         while 1:
-            if i > 0:
-                uname = name + str(i)
-            else:
-                uname = name
-
+            uname = name + str(i) if i > 0 else name
             reqbin = req_bins.get(uname)
             replybin = reply_bins.get(uname)
 
@@ -232,7 +215,7 @@ def build_request(endian):
 
             i = i + 1
 
-        for i in range(0, reqs + 1):
+        for i in range(reqs + 1):
             fpy.write('''
     def testPackRequest%(n)d(self):
         bin = request.%(req)s._request.to_binary(*(), **self.req_args_%(n)d)
@@ -244,7 +227,7 @@ def build_request(endian):
         self.assertEqual(args, self.req_args_%(n)d)
 ''' % { 'req': req.__name__, 'n': i })
 
-        for i in range(0, replies + 1):
+        for i in range(replies + 1):
             fpy.write('''
     def testPackReply%(n)d(self):
         bin = request.%(req)s._reply.to_binary(*(), **self.reply_args_%(n)d)
@@ -264,85 +247,81 @@ if __name__ == "__main__":
 
 
 def build_event(endian):
-    fc = open('genevent.c', 'w')
+    with open('genevent.c', 'w') as fc:
+        fc.write(C_HEADER)
 
-    fc.write(C_HEADER)
+        evtlist = list(event.event_class.items())
+        evtlist.sort(key=lambda x: x[0])
 
-    evtlist = list(event.event_class.items())
-    evtlist.sort(key=lambda x: x[0])
+        genfuncs = []
+        evt_args = {}
 
-    genfuncs = []
-    evt_args = {}
+        for code, evt in evtlist:
 
-    for code, evt in evtlist:
+            # skip events that does not subclass rq.Event immediately,
+            # since those are specializations of the more general ones we
+            # test.
 
-        # skip events that does not subclass rq.Event immediately,
-        # since those are specializations of the more general ones we
-        # test.
+            if evt.__bases__ != (rq.Event, ):
+                continue
 
-        if evt.__bases__ != (rq.Event, ):
-            continue
+            # special handling of KeymapNotify, since that
+            # event is so different
+            if evt == event.KeymapNotify:
+                evt_args['KeymapNotify'] = gen_func(fc,
+                                                    'genevent_KeymapNotify',
+                                                    'xKeymapEvent',
+                                                    'EVENT KeymapNotify',
+                                                    evt._fields,
+                                                    (('BYTE', 'type'), ),
+                                                    (31, ))
+                genfuncs.append('genevent_KeymapNotify')
+                continue
 
-        # special handling of KeymapNotify, since that
-        # event is so different
-        if evt == event.KeymapNotify:
-            evt_args['KeymapNotify'] = gen_func(fc,
-                                                'genevent_KeymapNotify',
-                                                'xKeymapEvent',
-                                                'EVENT KeymapNotify',
-                                                evt._fields,
-                                                (('BYTE', 'type'), ),
-                                                (31, ))
-            genfuncs.append('genevent_KeymapNotify')
-            continue
+            name = evt.__name__
 
-        name = evt.__name__
+            cdefs = event_defs.get(name)
+            if cdefs is None:
+                sys.stderr.write('missing def for event: %s\n' % name)
+            else:
+                vardefs = event_var_defs.get(name, [()])
+                if type(vardefs) is not list:
+                    vardefs = [vardefs]
 
-        cdefs = event_defs.get(name)
-        if cdefs is None:
-            sys.stderr.write('missing def for event: %s\n' % name)
-        else:
-            vardefs = event_var_defs.get(name, [()])
-            if type(vardefs) is not list:
-                vardefs = [vardefs]
+                i = 0
+                for v in vardefs:
+                    uname = name + str(i) if i > 0 else name
+                    try:
+                        evt_args[uname] = gen_func(
+                            fc,
+                            f'genevent_{uname}',
+                            'xEvent',
+                            f'EVENT {uname}',
+                            evt._fields,
+                            cdefs,
+                            v,
+                        )
+                    except:
+                        sys.stderr.write('Error in %s event\n' % uname)
+                        raise
 
-            i = 0
-            for v in vardefs:
-                if i > 0:
-                    uname = name + str(i)
-                else:
-                    uname = name
+                    genfuncs.append(f'genevent_{uname}')
+                    i = i + 1
 
-                try:
-                    evt_args[uname] = gen_func(fc,
-                                               'genevent_' + uname,
-                                               'xEvent',
-                                               'EVENT ' + uname,
-                                               evt._fields,
-                                               cdefs,
-                                               v)
-                except:
-                    sys.stderr.write('Error in %s event\n' % uname)
-                    raise
-
-                genfuncs.append('genevent_' + uname)
-                i = i + 1
-
-    fc.write('''
+        fc.write('''
 
     int main(void)
     {
     ''')
 
-    for gf in genfuncs:
-        fc.write('      %s();\n' % gf)
+        for gf in genfuncs:
+            fc.write('      %s();\n' % gf)
 
-    fc.write('''
+        fc.write('''
       return 0;
     }
     ''')
 
-    fc.close()
     os.system('gcc -Wall -g genevent.c -o genevent')
 
     evt_bins = {}
@@ -352,8 +331,8 @@ def build_event(endian):
         if parts[0] == 'EVENT':
             evt_bins[parts[1]] = parts[2]
 
-    fpy = open('../test_events_%s.py' % endian, 'w')
-    os.chmod('../test_events_%s.py' % endian, 0o755)
+    fpy = open(f'../test_events_{endian}.py', 'w')
+    os.chmod(f'../test_events_{endian}.py', 0o755)
 
     if endian == 'be':
         e = 'BigEndian'
@@ -376,11 +355,7 @@ def build_event(endian):
         i = 0
         evts = -1
         while 1:
-            if i > 0:
-                uname = name + str(i)
-            else:
-                uname = name
-
+            uname = name + str(i) if i > 0 else name
             evtbin = evt_bins.get(uname)
 
             if evtbin is None:
@@ -393,7 +368,7 @@ def build_event(endian):
                       % (i, build_bin(evtbin)))
             i = i + 1
 
-        for i in range(0, evts + 1):
+        for i in range(evts + 1):
             fpy.write('''
     def testPack%(n)d(self):
         bin = event.%(evt)s._fields.to_binary(*(), **self.evt_args_%(n)d)

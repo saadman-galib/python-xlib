@@ -63,11 +63,7 @@ def get_display(display):
         raise error.DisplayNameError(display)
 
     dno = int(dno)
-    if screen:
-        screen = int(screen)
-    else:
-        screen = 0
-
+    screen = int(screen) if screen else 0
     return display, protocol, host, dno, screen
 
 
@@ -190,7 +186,7 @@ def old_get_auth(sock, dname, host, dno):
     try:
         # We could parse .Xauthority, but xauth is simpler
         # although more inefficient
-        data = os.popen('xauth list %s 2>/dev/null' % dname).read()
+        data = os.popen(f'xauth list {dname} 2>/dev/null').read()
 
         # If there's a cookie, it is of the format
         #      DISPLAY SCHEME COOKIE

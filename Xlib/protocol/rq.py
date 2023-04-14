@@ -232,10 +232,7 @@ class OddLength(LengthField):
         return length % 2
 
     def parse_value(self, value, display):
-        if value == 0:
-            return 'even'
-        else:
-            return 'odd'
+        return 'even' if value == 0 else 'odd'
 
 
 class FormatField(Field):
@@ -306,8 +303,7 @@ class Resource(Card32):
         if value in self.codes:
             return value
 
-        c = display.get_resource_class(self.class_name)
-        if c:
+        if c := display.get_resource_class(self.class_name):
             return c(display, value)
         else:
             return value
@@ -362,8 +358,7 @@ class Set(ValueField):
 
     def check_value(self, val):
         if val not in self.values:
-            raise ValueError('field %s: argument %s not in %s'
-                             % (self.name, val, self.values))
+            raise ValueError(f'field {self.name}: argument {val} not in {self.values}')
 
         return val
 
@@ -405,11 +400,7 @@ class Binary(ValueField):
         if length is None:
             return data, b''
 
-        if self.pad:
-            slen = length + ((4 - length % 4) % 4)
-        else:
-            slen = length
-
+        slen = length + ((4 - length % 4) % 4) if self.pad else length
         return data[:length], data[slen:]
 
 
@@ -421,10 +412,7 @@ class String8(ValueField):
         self.pad = pad
 
     def pack_value(self, val):
-        if isinstance(val, bytes):
-            val_bytes = val
-        else:
-            val_bytes = val.encode()
+        val_bytes = val if isinstance(val, bytes) else val.encode()
         slen = len(val_bytes)
 
         if self.pad:
@@ -436,11 +424,7 @@ class String8(ValueField):
         if length is None:
             return decode_string(data), b''
 
-        if self.pad:
-            slen = length + ((4 - length % 4) % 4)
-        else:
-            slen = length
-
+        slen = length + ((4 - length % 4) % 4) if self.pad else length
         data_str = decode_string(data[:length])
 
         return data_str, data[slen:]
@@ -460,11 +444,7 @@ class String16(ValueField):
 
         slen = len(val)
 
-        if self.pad:
-            pad = b'\0\0' * (slen % 2)
-        else:
-            pad = b''
-
+        pad = b'\0\0' * (slen % 2) if self.pad else b''
         return struct.pack('>' + 'H' * slen, *val) + pad, slen, None
 
     def parse_binary_value(self, data, display, length, format):
@@ -473,11 +453,7 @@ class String16(ValueField):
         elif length == 'even':
             length = len(data) // 2
 
-        if self.pad:
-            slen = length + (length % 2)
-        else:
-            slen = length
-
+        slen = length + (length % 2) if self.pad else length
         return struct.unpack('>' + 'H' * length, data[:length * 2]), data[slen * 2:]
 
 
@@ -506,7 +482,7 @@ class List(ValueField):
                     val, data = self.type.parse_binary(data, display)
                     ret.append(val)
             else:
-                scode = '=' + self.type.structcode
+                scode = f'={self.type.structcode}'
                 slen = struct.calcsize(scode)
                 pos = 0
                 while pos + slen <= len(data):
@@ -520,7 +496,7 @@ class List(ValueField):
                     else:
                         ret.append(self.type.parse_value(v, display))
 
-                    pos = pos + slen
+                    pos += slen
 
                 data = data[pos:]
 
@@ -528,13 +504,13 @@ class List(ValueField):
             ret = [None] * int(length)
 
             if self.type.structcode is None:
-                for i in range(0, length):
+                for i in range(length):
                     ret[i], data = self.type.parse_binary(data, display)
             else:
-                scode = '=' + self.type.structcode
+                scode = f'={self.type.structcode}'
                 slen = struct.calcsize(scode)
                 pos = 0
-                for i in range(0, length):
+                for i in range(length):
                     v = struct.unpack(scode, data[pos: pos + slen])
 
                     if self.type.structvalues == 1:
@@ -562,10 +538,7 @@ class List(ValueField):
             a = array(struct_to_array_codes[self.type.structcode], val)
             data = encode_array(a)
         else:
-            data = []
-            for v in val:
-                data.append(self.type.pack_value(v))
-
+            data = [self.type.pack_value(v) for v in val]
             data = b''.join(data)
 
         if self.pad:
@@ -585,7 +558,7 @@ class FixedList(List):
 
     def pack_value(self, val):
         if len(val) != self.size:
-            raise BadDataError('length mismatch for FixedList %s' % self.name)
+            raise BadDataError(f'length mismatch for FixedList {self.name}')
         return List.pack_value(self, val)
 
 
@@ -611,10 +584,7 @@ class Object(ValueField):
             i = 0
             for f in self.type.fields:
                 if f.name:
-                    if f.check_value is None:
-                        v = val[i]
-                    else:
-                        v = f.check_value(val[i])
+                    v = val[i] if f.check_value is None else f.check_value(val[i])
                     if f.structvalues == 1:
                         vals.append(v)
                     else:
@@ -627,15 +597,14 @@ class Object(ValueField):
         elif isinstance(val, DictWrapper):
             data = val._data
         else:
-            raise TypeError('Object value must be tuple, dictionary or DictWrapper: %s' % val)
+            raise TypeError(
+                f'Object value must be tuple, dictionary or DictWrapper: {val}'
+            )
 
         vals = []
         for f in self.type.fields:
             if f.name:
-                if f.check_value is None:
-                    v = data[f.name]
-                else:
-                    v = f.check_value(data[f.name])
+                v = data[f.name] if f.check_value is None else f.check_value(data[f.name])
                 if f.structvalues == 1:
                     vals.append(v)
                 else:
@@ -648,11 +617,7 @@ class PropertyData(ValueField):
     structcode = None
 
     def parse_binary_value(self, data, display, length, format):
-        if length is None:
-            length = len(data) // (format // 8)
-        else:
-            length = int(length)
-
+        length = len(data) // (format // 8) if length is None else int(length)
         if format == 0:
             ret = None
 
@@ -680,7 +645,7 @@ class PropertyData(ValueField):
             size = fmt // 8
             vlen = len(val)
             if vlen % size:
-                vlen = vlen - vlen % size
+                vlen -= vlen % size
                 data = val[:vlen]
             else:
                 data = val
@@ -715,8 +680,7 @@ class FixedPropertyData(PropertyData):
         data, dlen, fmt = PropertyData.pack_value(self, value)
 
         if len(data) != self.size:
-            raise BadDataError('Wrong data length for FixedPropertyData: %s'
-                               % (value, ))
+            raise BadDataError(f'Wrong data length for FixedPropertyData: {value}')
 
         return data, dlen, fmt
 
@@ -753,7 +717,7 @@ class ValueList(Field):
                 if field.check_value is not None:
                     val = field.check_value(val)
 
-                d = struct.pack('=' + field.structcode, val)
+                d = struct.pack(f'={field.structcode}', val)
                 data = data + d + b'\0' * (4 - len(d))
 
         return struct.pack(self.maskcode, mask) + data, None, None
@@ -767,8 +731,10 @@ class ValueList(Field):
         for field, flag in self.fields:
             if mask & flag:
                 if field.structcode:
-                    vals = struct.unpack('=' + field.structcode,
-                                         data[:struct.calcsize('=' + field.structcode)])
+                    vals = struct.unpack(
+                        f'={field.structcode}',
+                        data[: struct.calcsize(f'={field.structcode}')],
+                    )
                     if field.structvalues == 1:
                         vals = vals[0]
 
@@ -788,17 +754,10 @@ class KeyboardMapping(ValueField):
     structcode = None
 
     def parse_binary_value(self, data, display, length, format):
-        if length is None:
-            dlen = len(data)
-        else:
-            dlen = 4 * length * format
-
+        dlen = len(data) if length is None else 4 * length * format
         a = array(array_unsigned_codes[4], bytes(data[:dlen]))
 
-        ret = []
-        for i in range(0, len(a), format):
-            ret.append(a[i : i + format])
-
+        ret = [a[i : i + format] for i in range(0, len(a), format)]
         return ret, data[dlen:]
 
     def pack_value(self, value):
@@ -811,7 +770,7 @@ class KeyboardMapping(ValueField):
         for v in value:
             for k in v:
                 a.append(k)
-            for i in range(len(v), keycodes):
+            for _ in range(len(v), keycodes):
                 a.append(X.NoSymbol)
 
         return encode_array(a), len(value), keycodes
@@ -823,10 +782,7 @@ class ModifierMapping(ValueField):
     def parse_binary_value(self, data, display, length, format):
         a = array(array_unsigned_codes[1], data[:8 * format])
 
-        ret = []
-        for i in range(0, 8):
-            ret.append(a[i * format : (i + 1) * format])
-
+        ret = [a[i * format : (i + 1) * format] for i in range(8)]
         return ret, data[8 * format:]
 
     def pack_value(self, value):
@@ -842,7 +798,7 @@ class ModifierMapping(ValueField):
         for v in value:
             for k in v:
                 a.append(k)
-            for i in range(len(v), keycodes):
+            for _ in range(len(v), keycodes):
                 a.append(0)
 
         return encode_array(a), len(value), keycodes
@@ -852,7 +808,7 @@ class EventField(ValueField):
 
     def pack_value(self, value):
         if not isinstance(value, Event):
-            raise BadDataError('%s is not an Event for field %s' % (value, self.name))
+            raise BadDataError(f'{value} is not an Event for field {self.name}')
 
         return value._binary, None, None
 
@@ -892,10 +848,7 @@ class ResourceObj(object):
         self.check_value = None
 
     def parse_value(self, value, display):
-        # if not display:
-        #     return value
-        c = display.get_resource_class(self.class_name)
-        if c:
+        if c := display.get_resource_class(self.class_name):
             return c(display, value)
         else:
             return value
@@ -991,12 +944,12 @@ class Struct(object):
         """
         # Emulate Python function argument handling with our field names
         names = [f.name for f in self.fields \
-                 if isinstance(f, ValueField) and f.name]
+                     if isinstance(f, ValueField) and f.name]
         field_args = dict(zip(names, varargs))
         if set(field_args).intersection(keys):
             dupes = ", ".join(set(field_args).intersection(keys))
             raise TypeError("{0} arguments were passed both positionally and by keyword".format(dupes))
-        field_args.update(keys)
+        field_args |= keys
         for f in self.fields:
             if f.name and (f.name not in field_args):
                 if f.default is None:
@@ -1038,33 +991,24 @@ class Struct(object):
                 else:
                     pack_items.append(f.calc_length(lengths[f.name]))
 
-            # Format field, just insert the value we got previously
             elif isinstance(f, FormatField):
                 pack_items.append(formats[f.name])
 
-            # A constant field, insert its value directly
             elif isinstance(f, ConstantField):
                 pack_items.append(f.value)
 
-            # Value fields
-            else:
-                if f.structvalues == 1:
+            elif f.structvalues == 1:
                     # If there's a value check/convert function, call it
-                    if f.check_value is not None:
-                        pack_items.append(f.check_value(field_args[f.name]))
-                    # Else just use the argument as provided
-                    else:
-                        pack_items.append(field_args[f.name])
+                if f.check_value is None:
+                    pack_items.append(field_args[f.name])
 
-                # Multivalue field.  Handled like single valuefield,
-                # but the value are tuple unpacked into separate arguments
-                # which are appended to pack_items
                 else:
-                    if f.check_value is not None:
-                        pack_items.extend(f.check_value(field_args[f.name]))
-                    else:
-                        pack_items.extend(field_args[f.name])
+                    pack_items.append(f.check_value(field_args[f.name]))
+            elif f.check_value is None:
+                pack_items.extend(field_args[f.name])
 
+            else:
+                pack_items.extend(f.check_value(field_args[f.name]))
         static_part = struct.pack(self.static_codes, *pack_items)
         var_parts = [var_vals[f.name] for f in self.var_fields]
         return static_part + b''.join(var_parts)
@@ -1085,7 +1029,7 @@ class Struct(object):
         elif isinstance(value, DictWrapper):
             return self.to_binary(**value._data)
         else:
-            raise BadDataError('%s is not a tuple or a list' % (value))
+            raise BadDataError(f'{value} is not a tuple or a list')
 
 
     def parse_value(self, val, display, rawdict = False):
@@ -1103,33 +1047,21 @@ class Struct(object):
             # be a matching field in var_fields and then parse_binary
             # would have been called instead.
 
-            if not f.name:
-                pass
-
-            elif isinstance(f, LengthField):
-                pass
-
-            elif isinstance(f, FormatField):
-                pass
-
-            # Value fields
-            else:
+            if (
+                f.name
+                and not isinstance(f, LengthField)
+                and not isinstance(f, FormatField)
+            ):
                 # If this field has a parse_value method, call it, otherwise
                 # use the unpacked value as is.
-                if f.structvalues == 1:
-                    field_val = val[vno]
-                else:
-                    field_val = val[vno:vno+f.structvalues]
-
+                field_val = val[vno] if f.structvalues == 1 else val[vno:vno+f.structvalues]
                 if f.parse_value is not None:
                     field_val = f.parse_value(field_val, display, rawdict=rawdict)
                 ret[f.name] = field_val
 
             vno = vno + f.structvalues
 
-        if not rawdict:
-            return DictWrapper(ret)
-        return ret
+        return ret if rawdict else DictWrapper(ret)
 
     def parse_binary(self, data, display, rawdict = False):
 
@@ -1164,9 +1096,6 @@ class Struct(object):
             if not f.name:
                 pass
 
-            # Store index in val for Length and Format fields, to be used
-            # when treating varfields.
-
             elif isinstance(f, LengthField):
                 f_names = [f.name]
                 if f.other_fields:
@@ -1180,13 +1109,8 @@ class Struct(object):
             elif isinstance(f, FormatField):
                 formats[f.name] = val[vno]
 
-            # Treat value fields the same was as in parse_value.
             else:
-                if f.structvalues == 1:
-                    field_val = val[vno]
-                else:
-                    field_val = val[vno:vno+f.structvalues]
-
+                field_val = val[vno] if f.structvalues == 1 else val[vno:vno+f.structvalues]
                 if f.parse_value is not None:
                     field_val = f.parse_value(field_val, display)
                 ret[f.name] = field_val
@@ -1257,10 +1181,7 @@ class TextElements8(ValueField):
 
     def parse_binary_value(self, data, display, length, format):
         values = []
-        while 1:
-            if len(data) < 2:
-                break
-
+        while 1 and len(data) >= 2:
             # font change
             if byte2int(data) == 255:
                 values.append(struct.unpack('>L', bytes(data[1:5]))[0])
@@ -1319,7 +1240,7 @@ class DictWrapper(GetAttrData):
         return str(self._data)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, repr(self._data))
+        return f'{self.__class__.__name__}({repr(self._data)})'
 
     def __lt__(self, other):
         if isinstance(other, DictWrapper):
@@ -1399,7 +1320,7 @@ class ReplyRequest(GetAttrData):
         return 1
 
     def __repr__(self):
-        return '<%s serial = %s, data = %s, error = %s>' % (self.__class__.__name__, self._serial, self._data, self._error)
+        return f'<{self.__class__.__name__} serial = {self._serial}, data = {self._data}, error = {self._error}>'
 
 
 class Event(GetAttrData):
@@ -1430,10 +1351,10 @@ class Event(GetAttrData):
                 continue
             if kw == 'type' and self._data['send_event']:
                 val = val | 0x80
-            kwlist.append('%s = %s' % (kw, repr(val)))
+            kwlist.append(f'{kw} = {repr(val)}')
 
         kws = ', '.join(kwlist)
-        return '%s(%s)' % (self.__class__.__name__, kws)
+        return f'{self.__class__.__name__}({kws})'
 
     def __lt__(self, other):
         if isinstance(other, Event):

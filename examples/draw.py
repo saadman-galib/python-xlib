@@ -111,11 +111,10 @@ class Window(object):
             if e.type == X.MotionNotify and current:
                 current.motion(e)
 
-            if e.type == X.ClientMessage:
-                if e.client_type == self.WM_PROTOCOLS:
-                    fmt, data = e.data
-                    if fmt == 32 and data[0] == self.WM_DELETE_WINDOW:
-                        sys.exit(0)
+            if e.type == X.ClientMessage and e.client_type == self.WM_PROTOCOLS:
+                fmt, data = e.data
+                if fmt == 32 and data[0] == self.WM_DELETE_WINDOW:
+                    sys.exit(0)
 
 # A drawed objects, consisting of either a single
 # rhomboid, or two rhomboids connected by a winding line

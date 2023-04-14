@@ -42,7 +42,9 @@ class Window(object):
 
         # Check for extension
         if not self.d.has_extension('XINERAMA'):
-            sys.stderr.write('{}: server does not have the XINERAMA extension\n'.format(sys.argv[0]))
+            sys.stderr.write(
+                f'{sys.argv[0]}: server does not have the XINERAMA extension\n'
+            )
             ext = self.d.query_extension('XINERAMA')
             print(ext)
             sys.stderr.write("\n".join(self.d.list_extensions()))
@@ -122,7 +124,7 @@ class Window(object):
 
     def parseModes(self, mode_names, modes):
         lastIdx = 0
-        modedatas = dict()
+        modedatas = {}
         for mode in modes:
             modedata = dict(mode._data)
             modedata['name'] = mode_names[lastIdx:lastIdx + modedata['name_length']]

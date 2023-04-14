@@ -40,7 +40,9 @@ if __name__ == '__main__':
     display = Display()
     # Check for extension
     if not display.has_extension('NV-CONTROL'):
-        sys.stderr.write('{}: server does not have the NV-CONTROL extension\n'.format(sys.argv[0]))
+        sys.stderr.write(
+            f'{sys.argv[0]}: server does not have the NV-CONTROL extension\n'
+        )
         ext = display.query_extension('NV-CONTROL')
         print(ext)
         sys.stderr.write("\n".join(display.list_extensions()))

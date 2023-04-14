@@ -54,22 +54,20 @@ if PY3:
             elif isinstance(data, bytesview):
                 view = data.view
             else:
-                raise TypeError('unsupported type: {}'.format(type(data)))
+                raise TypeError(f'unsupported type: {type(data)}')
             self.view = view[offset:offset+size]
 
         def __len__(self):
             return len(self.view)
 
         def __getitem__(self, key):
-            if isinstance(key, slice):
-                return bytes(self.view[key])
-            return self.view[key]
+            return bytes(self.view[key]) if isinstance(key, slice) else self.view[key]
 
 else:
 
     def bytesview(data, offset=0, size=None):
         if not isinstance(data, (bytes, buffer)):
-            raise TypeError('unsupported type: {}'.format(type(data)))
+            raise TypeError(f'unsupported type: {type(data)}')
         if size is None:
             size = len(data)-offset
         return buffer(data, offset, size)
@@ -148,11 +146,7 @@ class Display(object):
         # Figure out which endianness the hardware uses
         self.big_endian = struct.unpack('BB', struct.pack('H', 0x0100))[0]
 
-        if self.big_endian:
-            order = 0x42
-        else:
-            order = 0x6c
-
+        order = 0x42 if self.big_endian else 0x6c
         # Send connection setup
         r = ConnectionSetupRequest(self,
                                    byte_order = order,
@@ -326,13 +320,13 @@ class Display(object):
         return self.extension_major_opcodes[extname]
 
     def add_extension_event(self, code, evt, subcode=None):
-       if subcode == None:
-           self.event_classes[code] = evt
-       else:
-           if not code in self.event_classes:
-               self.event_classes[code] = {subcode: evt}
-           else:
-               self.event_classes[code][subcode] = evt
+        if subcode is None:
+            self.event_classes[code] = evt
+        elif code in self.event_classes:
+            self.event_classes[code][subcode] = evt
+
+        else:
+            self.event_classes[code] = {subcode: evt}
 
     def add_extension_error(self, code, err):
         self.error_classes[code] = err
@@ -545,28 +539,15 @@ class Display(object):
                 # and should take care of the data, or the receiving thread
                 # might finish receiving after having read the data
 
-                if sending:
-                    writeset = [self.socket]
-                else:
-                    writeset = []
-
+                writeset = [self.socket] if sending else []
                 # Timeout immediately if we're only checking for
                 # something to read or if we're flushing, otherwise block
 
-                if recv or flush:
-                    timeout = 0
-                else:
-                    timeout = None
-
+                timeout = 0 if recv or flush else None
                 rs, ws, es = select.select([self.socket], writeset, [], timeout)
 
-            # Ignore errors caused by a signal received while blocking.
-            # All other errors are re-raised.
             except select.error as err:
-                if isinstance(err, OSError):
-                    code = err.errno
-                else:
-                    code = err[0]
+                code = err.errno if isinstance(err, OSError) else err[0]
                 if code != errno.EINTR:
                     raise
 
@@ -582,7 +563,7 @@ class Display(object):
                 try:
                     i = self.socket.send(self.data_send)
                 except socket.error as err:
-                    self.close_internal('server: %s' % err)
+                    self.close_internal(f'server: {err}')
                     raise self.socket_error
 
                 self.data_send = self.data_send[i:]
@@ -592,15 +573,13 @@ class Display(object):
             # There is data to read
             gotreq = 0
             if rs:
-
-                # We're the receiving thread, parse the data
                 if receiving:
                     try:
                         count = self.recv_packet_len - len(self.data_recv)
                         count = max(self.recv_buffer_size, count)
                         bytes_recv = self.socket.recv(count)
                     except socket.error as err:
-                        self.close_internal('server: %s' % err)
+                        self.close_internal(f'server: {err}')
                         raise self.socket_error
 
                     if not bytes_recv:
@@ -611,8 +590,6 @@ class Display(object):
                     self.data_recv = bytes(self.data_recv) + bytes_recv
                     gotreq = self.parse_response(request)
 
-                # Otherwise return, allowing the calling thread to figure
-                # out if it has got the data it needs
                 else:
                     # We must be a sending thread if we're here, so reset
                     # that indicator.
@@ -786,8 +763,9 @@ class Display(object):
         # Do sanity check before trying to parse the data
         sno = struct.unpack('=H', self.data_recv[2:4])[0]
         if sno != req._serial:
-            raise RuntimeError("Expected reply for request %s, but got %s.  Can't happen!"
-                               % (req._serial, sno))
+            raise RuntimeError(
+                f"Expected reply for request {req._serial}, but got {sno}.  Can't happen!"
+            )
 
         req._parse_response(self.data_recv[:self.recv_packet_len])
         # print 'recv Request:', req
@@ -814,11 +792,7 @@ class Display(object):
         # Skip bit 8, that is set if this event came from an SendEvent
         etype = etype & 0x7f
 
-        if etype == ge.GenericEventCode:
-            length = self.recv_packet_len
-        else:
-            length = 32
-
+        length = self.recv_packet_len if etype == ge.GenericEventCode else 32
         estruct = self.event_classes.get(etype, event.AnyEvent)
         if type(estruct) == dict:
             subcode = self.data_recv[1]
@@ -895,7 +869,7 @@ class Display(object):
         adj = 0
         last = 0
 
-        for i in range(0, len(self.sent_requests)):
+        for i in range(len(self.sent_requests)):
             rno = self.sent_requests[i]._serial + adj
 
             # Did serial numbers just wrap around?
@@ -920,15 +894,13 @@ class Display(object):
         return req
 
     def get_waiting_replyrequest(self):
-        for i in range(0, len(self.sent_requests)):
+        for i in range(len(self.sent_requests)):
             if hasattr(self.sent_requests[i], '_reply'):
                 req = self.sent_requests[i]
                 del self.sent_requests[:i + 1]
                 return req
 
-        # Reply for an unknown request?  No, that can't happen.
-        else:
-            raise RuntimeError("Request reply to unknown request.  Can't happen!")
+        raise RuntimeError("Request reply to unknown request.  Can't happen!")
 
     def parse_connection_setup(self):
         """Internal function used to parse connection setup response.

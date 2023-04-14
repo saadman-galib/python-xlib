@@ -32,10 +32,7 @@ class Resource(object):
 
     def __eq__(self, obj):
         if isinstance(obj, Resource):
-            if self.display == obj.display:
-                return self.id == obj.id
-            else:
-                return False
+            return self.id == obj.id if self.display == obj.display else False
         else:
             return id(self) == id(obj)
 

@@ -44,12 +44,13 @@ class DPMSExamples(object):
 
     def print_dpms(self):
         current_info = self.d.dpms_info()
-        print('\nDPMS state: {}\nPower level: {}'.format(current_info.state,
-                                                         current_info.power_level))
+        print(
+            f'\nDPMS state: {current_info.state}\nPower level: {current_info.power_level}'
+        )
         current_timeouts = self.d.dpms_get_timeouts()
-        print('Standby: {}, Suspend: {}, Off: {}\n'.format(current_timeouts.standby_timeout,
-                                                           current_timeouts.suspend_timeout,
-                                                           current_timeouts.off_timeout))
+        print(
+            f'Standby: {current_timeouts.standby_timeout}, Suspend: {current_timeouts.suspend_timeout}, Off: {current_timeouts.off_timeout}\n'
+        )
 
     def toggle_dpms(self):
         current_info = self.d.dpms_info()

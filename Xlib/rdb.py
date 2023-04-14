@@ -177,11 +177,7 @@ class ResourceDB(object):
                 db[parts[i - 1]] = ({}, {})
 
             # Use second mapping if a loose binding, first otherwise
-            if '*' in parts[i]:
-                db = db[parts[i - 1]][1]
-            else:
-                db = db[parts[i - 1]][0]
-
+            db = db[parts[i - 1]][1] if '*' in parts[i] else db[parts[i - 1]][0]
         # Insert value into the derived db
         if parts[-1] in db:
             db[parts[-1]] = db[parts[-1]][:2] + (value, )
@@ -207,7 +203,9 @@ class ResourceDB(object):
         # of parts
 
         if len(namep) != len(clsp):
-            raise ValueError('Different number of parts in resource name/class: %s/%s' % (name, cls))
+            raise ValueError(
+                f'Different number of parts in resource name/class: {name}/{cls}'
+            )
 
         complen = len(namep)
         matches = []
@@ -281,9 +279,7 @@ class ResourceDB(object):
                                     (clsp[i], CLASS_MATCH),
                                     ('?', WILD_MATCH)):
 
-                    # Attempt to find a match in x
-                    match = x.match(part, score)
-                    if match:
+                    if match := x.match(part, score):
                         # Hey, we actually found a value!
                         if match.final(complen):
                             return match.value()
@@ -292,9 +288,7 @@ class ResourceDB(object):
                         else:
                             bin_insert(matches, match)
 
-                    # Generate a new loose match
-                    match = x.skip_match(complen)
-                    if match:
+                    if match := x.skip_match(complen):
                         bin_insert(matches, match)
 
             # Oh well, nothing matched
@@ -371,9 +365,9 @@ class ResourceDB(object):
             try:
                 argv = opts[argv[0]].parse(name, self, argv)
             except KeyError:
-                raise OptionError('unknown option: %s' % argv[0])
+                raise OptionError(f'unknown option: {argv[0]}')
             except IndexError:
-                raise OptionError('missing argument to option: %s' % argv[0])
+                raise OptionError(f'missing argument to option: {argv[0]}')
 
         return argv
 
@@ -404,17 +398,17 @@ class _Match(object):
 
     def match(self, part, score):
         if self.skip:
-            if part in self.db:
-                return _Match(self.path + (score, ), self.db[part])
-            else:
-                return None
+            return (
+                _Match(self.path + (score,), self.db[part])
+                if part in self.db
+                else None
+            )
+        if part in self.group[0]:
+            return _Match(self.path + (score, ), self.group[0][part])
+        elif part in self.group[1]:
+            return _Match(self.path + (score + 1, ), self.group[1][part])
         else:
-            if part in self.group[0]:
-                return _Match(self.path + (score, ), self.group[0][part])
-            elif part in self.group[1]:
-                return _Match(self.path + (score + 1, ), self.group[1][part])
-            else:
-                return None
+            return None
 
     def skip_match(self, complen):
         # Can't make another skip if we have run out of components
@@ -423,17 +417,10 @@ class _Match(object):
 
         # If this already is a skip match, clone a new one
         if self.skip:
-            if self.db:
-                return _Match(self.path + (MATCH_SKIP, ), self.db)
-            else:
-                return None
-
-        # Only generate a skip match if the loose binding mapping
-        # is non-empty
+            return _Match(self.path + (MATCH_SKIP, ), self.db) if self.db else None
         elif self.group[1]:
             return _Match(self.path + (MATCH_SKIP, ), self.group[1])
 
-        # This is a dead end match
         else:
             return None
 
@@ -510,11 +497,7 @@ def copy_group(group):
     return (copy_db(group[0]), copy_db(group[1])) + group[2:]
 
 def copy_db(db):
-    newdb = {}
-    for comp, group in db.items():
-        newdb[comp] = copy_group(group)
-
-    return newdb
+    return {comp: copy_group(group) for comp, group in db.items()}
 
 
 #
@@ -650,12 +633,12 @@ def get_display_opts(options, argv = sys.argv):
     optdb = ResourceDB()
     leftargv = optdb.getopt(name, argv[1:], options)
 
-    dname = optdb.get(name + '.display', name + '.Display', None)
+    dname = optdb.get(f'{name}.display', f'{name}.Display', None)
     d = display.Display(dname)
 
-    rdbstring = d.screen(0).root.get_full_property(Xatom.RESOURCE_MANAGER,
-                                                   Xatom.STRING)
-    if rdbstring:
+    if rdbstring := d.screen(0).root.get_full_property(
+        Xatom.RESOURCE_MANAGER, Xatom.STRING
+    ):
         data = rdbstring.value
     else:
         data = None

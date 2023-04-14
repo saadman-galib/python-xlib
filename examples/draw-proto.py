@@ -143,11 +143,7 @@ class Movement(object):
             # the last recorded coordinate
 
             pos = r.events[0]
-            if (pos.x, pos.y) == self.lines[-1]:
-                events = r.events[1:]
-            else:
-                events = r.events
-
+            events = r.events[1:] if (pos.x, pos.y) == self.lines[-1] else r.events
             # Append all coordinates
             for pos in events:
                 x = pos.x

@@ -72,8 +72,7 @@ class Colormap(resource.Resource):
 
     def alloc_named_color(self, name):
         for r in rgb_res:
-            m = r.match(name)
-            if m:
+            if m := r.match(name):
                 rs = m.group(1)
                 r = int(rs + '0' * (4 - len(rs)), 16)
 

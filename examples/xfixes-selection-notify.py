@@ -47,16 +47,18 @@ def main(argv):
     sel_name = sys.argv[1]
     sel_atom = display.get_atom(sel_name)
 
-    if not display.has_extension('XFIXES'):
-        if display.query_extension('XFIXES') is None:
-            print('XFIXES extension not supported', file=sys.stderr)
-            return 1
+    if (
+        not display.has_extension('XFIXES')
+        and display.query_extension('XFIXES') is None
+    ):
+        print('XFIXES extension not supported', file=sys.stderr)
+        return 1
 
     xfixes_version = display.xfixes_query_version()
-    print('Found XFIXES version %s.%s' % (
-      xfixes_version.major_version,
-      xfixes_version.minor_version,
-    ), file=sys.stderr)
+    print(
+        f'Found XFIXES version {xfixes_version.major_version}.{xfixes_version.minor_version}',
+        file=sys.stderr,
+    )
 
     screen = display.screen()
 

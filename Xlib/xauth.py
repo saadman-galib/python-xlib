@@ -66,7 +66,7 @@ class Xauthority(object):
         try:
             while n < len(raw):
                 family, = struct.unpack('>H', raw[n:n+2])
-                n = n + 2
+                n += 2
 
                 length, = struct.unpack('>H', raw[n:n+2])
                 n = n + length + 2
@@ -91,7 +91,7 @@ class Xauthority(object):
         except struct.error:
             print("Xlib.xauth: warning, failed to parse part of xauthority file {0}, aborting all further parsing".format(filename))
 
-        if len(self.entries) == 0:
+        if not self.entries:
             print("Xlib.xauth: warning, no xauthority details available")
             # raise an error?  this should get partially caught by the XNoAuthError in get_best_auth..
 

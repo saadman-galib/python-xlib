@@ -29,7 +29,7 @@ import os
 import subprocess
 import unittest
 
-examples_folder = os.path.abspath(os.path.dirname(__file__)) + "/"
+examples_folder = f"{os.path.abspath(os.path.dirname(__file__))}/"
 
 def run_example(path):
     """ Returns returncode of example """
@@ -50,14 +50,23 @@ class TestExamples(unittest.TestCase):
 
     def test_get_selection(self):
         """ Run get_selection.py -- demonstrate getting selections """
-        self.assertEqual(run_example(examples_folder + "get_selection.py PRIMARY"), 0)
-        self.assertEqual(run_example(examples_folder + "get_selection.py SECONDARY"), 0)
-        self.assertEqual(run_example(examples_folder + "get_selection.py CLIPBOARD"), 0)
+        self.assertEqual(run_example(f"{examples_folder}get_selection.py PRIMARY"), 0)
+        self.assertEqual(
+            run_example(f"{examples_folder}get_selection.py SECONDARY"), 0
+        )
+        self.assertEqual(
+            run_example(f"{examples_folder}get_selection.py CLIPBOARD"), 0
+        )
 
     def test_profilex(self):
         """ Run profilex.py -- program to generate profiling data """
-        self.assertEqual(run_example(examples_folder + "profilex.py " + examples_folder + "profilex_output"), 0)
-        subprocess.call(["rm", examples_folder + "profilex_output"])
+        self.assertEqual(
+            run_example(
+                f"{examples_folder}profilex.py {examples_folder}profilex_output"
+            ),
+            0,
+        )
+        subprocess.call(["rm", f"{examples_folder}profilex_output"])
 
 # TODO
 #     def test_record_demo(self):
@@ -66,20 +75,20 @@ class TestExamples(unittest.TestCase):
 
     def test_security(self):
         """ Run security.py -- demonstrate the SECURITY extension """
-        self.assertEqual(run_example(examples_folder + "security.py --generate"), 0)
-        self.assertEqual(run_example(examples_folder + "security.py --revoke"), 0)
+        self.assertEqual(run_example(f"{examples_folder}security.py --generate"), 0)
+        self.assertEqual(run_example(f"{examples_folder}security.py --revoke"), 0)
 
     def test_xfixes(self):
         """ Run xfixes.py -- demonstrate the XFIXES extension """
-        self.assertEqual(run_example(examples_folder + "xfixes.py"), 0)
+        self.assertEqual(run_example(f"{examples_folder}xfixes.py"), 0)
 
     def test_xlsatoms(self):
         """ Run xlsatoms.py -- show list atoms on X server """
-        self.assertEqual(run_example(examples_folder + "xlsatoms.py"), 0)
+        self.assertEqual(run_example(f"{examples_folder}xlsatoms.py"), 0)
 
     def test_xres(self):
         """ Run xres.py -- demonstrate the X-Resource extension """
-        self.assertEqual(run_example(examples_folder + "xres.py"), 0)
+        self.assertEqual(run_example(f"{examples_folder}xres.py"), 0)
 
 
 if __name__ == '__main__':

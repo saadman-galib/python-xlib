@@ -14,7 +14,7 @@ from . import DummyDisplay, TestCase
 dummy_display = DummyDisplay()
 
 def pack(format, *args):
-    return struct.pack('=' + format, *args)
+    return struct.pack(f'={format}', *args)
 
 def packstr(s, padding=0):
     return s.encode() + (b'\0' * padding)
@@ -66,19 +66,23 @@ def _struct_test(name, fields):
             (optional, <field_value_in> is used if not specified)
     """
 
-    class_name = ''.join([part.capitalize() for part in re.sub(r'[^\w]+', ' ', name).split()])
-    class_name += 'StructTest'
+    class_name = (
+        ''.join(
+            [
+                part.capitalize()
+                for part in re.sub(r'[^\w]+', ' ', name).split()
+            ]
+        )
+        + 'StructTest'
+    )
     struct_layout = []
     values_in = OrderedDict()
     binary = b''
     values_out = OrderedDict()
     for field_params in fields:
         assert 4 <= len(field_params) <= 5
-        field_name, field_type, field_value_in, field_binary = field_params[0:4]
-        if len(field_params) == 5:
-            field_value_out = field_params[4]
-        else:
-            field_value_out = field_value_in
+        field_name, field_type, field_value_in, field_binary = field_params[:4]
+        field_value_out = field_params[4] if len(field_params) == 5 else field_value_in
         struct_layout.append(field_type(field_name))
         if field_name is not None:
             if field_value_in is not None:
