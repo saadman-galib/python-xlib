@@ -81,12 +81,9 @@ def runtests():
     cleanup_funcs = []
 
     try:
-        if hasattr(sys, 'pypy_version_info'):
-            server_display = ':8'
-        else:
-            server_display = ':9'
-        server_display += ''.join(str(n) for n in sys.version_info[:3])
-
+        server_display = (
+            ':8' if hasattr(sys, 'pypy_version_info') else ':9'
+        ) + ''.join(str(n) for n in sys.version_info[:3])
         # Setup a temporary authentication file.
         cookie = subprocess.check_output('mcookie').strip()
         authfile = tempfile.NamedTemporaryFile(delete=False)
@@ -103,9 +100,12 @@ def runtests():
 
         # Start xserver.
         server_pid = xserver_start(server_display, authfile=authfile.name)
-        cleanup_funcs.append(lambda: os.waitpid(server_pid, 0))
-        cleanup_funcs.append(lambda: os.kill(server_pid, signal.SIGTERM))
-
+        cleanup_funcs.extend(
+            (
+                lambda: os.waitpid(server_pid, 0),
+                lambda: os.kill(server_pid, signal.SIGTERM),
+            )
+        )
         # Give the server 3 seconds to start.
         signal.alarm(3)
 

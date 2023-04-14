@@ -22,7 +22,7 @@ def dostuff():
     r = d.screen().root
     cm = d.screen().default_colormap
 
-    for i in range(0, 1000):
+    for i in range(1000):
         if i % 50 == 0:
             print('Iteration', i)
 

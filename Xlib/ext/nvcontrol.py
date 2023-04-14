@@ -43,9 +43,7 @@ def query_int_attribute(self, target, display_mask, attr):
                                              target_type=target.type(),
                                              display_mask=display_mask,
                                              attr=attr)
-    if not reply._data.get('flags'):
-        return None
-    return int(reply._data.get('value'))
+    return int(reply._data.get('value')) if reply._data.get('flags') else None
 
 
 def set_int_attribute(self, target, display_mask, attr, value):
@@ -68,9 +66,11 @@ def query_string_attribute(self, target, display_mask, attr):
                                                    target_type=target.type(),
                                                    display_mask=display_mask,
                                                    attr=attr)
-    if not reply._data.get('flags'):
-        return None
-    return str(reply._data.get('string')).strip('\0')
+    return (
+        str(reply._data.get('string')).strip('\0')
+        if reply._data.get('flags')
+        else None
+    )
 
 
 def query_valid_attr_values(self, target, display_mask, attr):
@@ -81,9 +81,11 @@ def query_valid_attr_values(self, target, display_mask, attr):
                                                         target_type=target.type(),
                                                         display_mask=display_mask,
                                                         attr=attr)
-    if not reply._data.get('flags'):
-        return None
-    return int(reply._data.get('min')), int(reply._data.get('max'))
+    return (
+        (int(reply._data.get('min')), int(reply._data.get('max')))
+        if reply._data.get('flags')
+        else None
+    )
 
 
 def query_binary_data(self, target, display_mask, attr):
@@ -94,9 +96,7 @@ def query_binary_data(self, target, display_mask, attr):
                                               target_type=target.type(),
                                               display_mask=display_mask,
                                               attr=attr)
-    if not reply._data.get('flags'):
-        return None
-    return reply._data.get('data')
+    return reply._data.get('data') if reply._data.get('flags') else None
 
 
 def get_coolers_used_by_gpu(self, target):
@@ -109,10 +109,7 @@ def get_coolers_used_by_gpu(self, target):
     if not reply._data.get('flags'):
         return None
     fans = reply._data.get('list')
-    if len(fans) > 1:
-        return fans[1:]
-    else:
-        return None
+    return fans[1:] if len(fans) > 1 else None
 
 
 def get_gpu_count(self):
@@ -342,15 +339,12 @@ def _displaystr2num(st):
     if num is not None:
         return num
     else:
-        raise ValueError('Unrecognised display name: ' + st)
+        raise ValueError(f'Unrecognised display name: {st}')
 
 
 def _displays2mask(displays):
     """Return a display mask from an array of display numbers."""
-    mask = 0
-    for d in displays:
-        mask += (1 << _displaystr2num(d))
-    return mask
+    return sum((1 << _displaystr2num(d)) for d in displays)
 
 
 def init(disp, info):
@@ -5194,7 +5188,7 @@ class Target(object):
         return self._type
 
     def __str__(self):
-        return '<nVidia {} #{}>'.format(self._name, self.id())
+        return f'<nVidia {self._name} #{self.id()}>'
 
 
 class Gpu(Target):

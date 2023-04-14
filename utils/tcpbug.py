@@ -36,18 +36,16 @@ def tcpbug(listenaddr, destaddr, outputfd):
         readset, writeset, e = select.select(readset, writeset, [])
 
         if client in readset:
-            data = client.recv(2000)
-            if data:
+            if data := client.recv(2000):
                 swbuf = swbuf + data
-                outbuf = outbuf + 'C%d\n%s' % (len(data), data)
+                outbuf += 'C%d\n%s' % (len(data), data)
             else:
                 client = None
 
         if server in readset:
-            data = server.recv(2000)
-            if data:
+            if data := server.recv(2000):
                 cwbuf = cwbuf + data
-                outbuf = outbuf + 'S%d\n%s' % (len(data), data)
+                outbuf += 'S%d\n%s' % (len(data), data)
             else:
                 server = None
 

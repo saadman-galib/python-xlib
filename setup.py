@@ -6,7 +6,9 @@ from setuptools import (__version__ as setuptools_version, setup)
 
 # Check setuptools is recent enough to support `setup.cfg`.
 setuptools_require = next(parse_requirements('setuptools>=30.3.0'))
-assert setuptools_version in setuptools_require, '{} is required'.format(setuptools_require)
+assert (
+    setuptools_version in setuptools_require
+), f'{setuptools_require} is required'
 
 
 setup(

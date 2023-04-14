@@ -57,7 +57,7 @@ class BugFile(object):
         elif src == 'S':
             self.sbuf = self.sbuf + data
         else:
-            raise ValueError('Bad control line: %s' % line)
+            raise ValueError(f'Bad control line: {line}')
 
 
 class ParseString(object):
@@ -83,14 +83,13 @@ class ParseString(object):
             i = key.start
             j = key.stop
             if j == sys.maxint:
-                if self.get_data:
-                    ps = ParseString(self.get_data)
-                    self.get_data = None
-                    return ps
-                else:
+                if not self.get_data:
                     raise RuntimeError('attempt to allocate another ParseString')
 
 
+                ps = ParseString(self.get_data)
+                self.get_data = None
+                return ps
             if i < 0 or j < 0 or i > j:
                 raise ValueError('bad slice indices: [%d:%d]' % (i, j))
 
@@ -237,7 +236,7 @@ class ParseXbug(object):
 
 
     def print_xbug(self, rtype, name, data):
-        self.outfile.write('%-8s %s\n' % (rtype + ':', name))
+        self.outfile.write('%-8s %s\n' % (f'{rtype}:', name))
         self.xpprint.pprint(data)
         self.outfile.write('\n')
 

@@ -31,11 +31,11 @@ class DisplayError(Exception):
         self.display = display
 
     def __str__(self):
-        return 'Display error "%s"' % self.display
+        return f'Display error "{self.display}"'
 
 class DisplayNameError(DisplayError):
     def __str__(self):
-        return 'Bad display name "%s"' % self.display
+        return f'Bad display name "{self.display}"'
 
 class DisplayConnectionError(DisplayError):
     def __init__(self, display, msg):
@@ -50,7 +50,7 @@ class ConnectionClosedError(Exception):
         self.whom = whom
 
     def __str__(self):
-        return 'Display connection closed by %s' % self.whom
+        return f'Display connection closed by {self.whom}'
 
 
 class XauthError(Exception): pass
@@ -73,11 +73,16 @@ class XError(rq.GetAttrData, Exception):
         self._data, _ = self._fields.parse_binary(data, display, rawdict = True)
 
     def __str__(self):
-        s = []
-        for f in ('code', 'resource_id', 'sequence_number',
-                  'major_opcode', 'minor_opcode'):
-            s.append('{0} = {1}'.format(f, self._data[f]))
-
+        s = [
+            '{0} = {1}'.format(f, self._data[f])
+            for f in (
+                'code',
+                'resource_id',
+                'sequence_number',
+                'major_opcode',
+                'minor_opcode',
+            )
+        ]
         return '{0}: {1}'.format(self.__class__, ', '.join(s))
 
 class XResourceError(XError):

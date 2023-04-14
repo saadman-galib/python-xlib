@@ -52,7 +52,7 @@ del _parts
 
 
 def _relative_import(modname):
-    return importlib.import_module('..' + modname, __name__)
+    return importlib.import_module(f'..{modname}', __name__)
 
 
 def get_display(display):

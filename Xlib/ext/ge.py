@@ -91,10 +91,10 @@ class GenericEvent(rq.Event):
             )
 
         if display:
-            ge_event_data = getattr(display, 'ge_event_data', None)
-            if ge_event_data:
-                estruct = ge_event_data.get((self.extension, self.evtype), None)
-                if estruct:
+            if ge_event_data := getattr(display, 'ge_event_data', None):
+                if estruct := ge_event_data.get(
+                    (self.extension, self.evtype), None
+                ):
                     data, _ = estruct.parse_binary(data, display)
 
         self._data['data'] = data

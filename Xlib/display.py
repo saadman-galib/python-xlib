@@ -117,7 +117,7 @@ class Display(object):
             if extname in exts:
 
                 # Import the module and fetch it
-                __import__('Xlib.ext.' + modname)
+                __import__(f'Xlib.ext.{modname}')
                 mod = getattr(ext, modname)
 
                 info = self.query_extension(extname)
@@ -272,7 +272,7 @@ class Display(object):
 
         if object == 'display':
             if hasattr(self, name):
-                raise AssertionError('attempting to replace display method: %s' % name)
+                raise AssertionError(f'attempting to replace display method: {name}')
 
             self.display_extension_methods[name] = function
 
@@ -281,7 +281,7 @@ class Display(object):
             for class_name in class_list:
                 cls = _resource_baseclasses[class_name]
                 if hasattr(cls, name):
-                    raise AssertionError('attempting to replace %s method: %s' % (class_name, name))
+                    raise AssertionError(f'attempting to replace {class_name} method: {name}')
 
                 method = create_unbound_method(function, cls)
 
@@ -417,7 +417,7 @@ class Display(object):
                 if code >= first_keycode and code < lastcode:
                     del codes[i]
                 else:
-                    i = i + 1
+                    i += 1
 
         # Get the new keyboard mapping
         keysyms = self.get_keyboard_mapping(first_keycode, count)
@@ -702,10 +702,7 @@ class Display(object):
         If the extension is not supported, None is returned."""
         r = request.QueryExtension(display = self.display,
                                    name = name)
-        if r.present:
-            return r
-        else:
-            return None
+        return r if r.present else None
 
     def list_extensions(self):
         """Return a list of all the extensions provided by the server."""
@@ -806,11 +803,7 @@ class Display(object):
             do_accel = 1
             accel_num, accel_denum = accel
 
-        if threshold is None:
-            do_threshold = 0
-        else:
-            do_threshold = 1
-
+        do_threshold = 0 if threshold is None else 1
         request.ChangePointerControl(display = self.display,
                                      onerror = onerror,
                                      do_accel = do_accel,

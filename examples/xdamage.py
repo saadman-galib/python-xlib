@@ -59,9 +59,7 @@ def blink(display, win, gc, cols):
 def get_image_from_win(win, pt_w, pt_h, pt_x=0, pt_y=0):
     try:
         raw = win.get_image(pt_x, pt_y, pt_w, pt_h, X.ZPixmap, 0xffffffff)
-        image = Image.frombytes("RGB", (pt_w, pt_h), raw.data, "raw", "BGRX")
-        return image
-
+        return Image.frombytes("RGB", (pt_w, pt_h), raw.data, "raw", "BGRX")
     except Exception:
         traceback.print_exc()
 
@@ -70,12 +68,12 @@ def check_ext(disp):
     if not disp.has_extension('DAMAGE'):
         sys.stderr.write('server does not have the DAMAGE extension\n')
         sys.stderr.write("\n".join(disp.list_extensions()))
-        
+
         if disp.query_extension('DAMAGE') is None:
             sys.exit(1)
     else:
         r = disp.damage_query_version()
-        print('DAMAGE version {}.{}'.format(r.major_version, r.minor_version))
+        print(f'DAMAGE version {r.major_version}.{r.minor_version}')
     
 def main():
     d = display.Display()

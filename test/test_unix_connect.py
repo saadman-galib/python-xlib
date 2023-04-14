@@ -60,20 +60,24 @@ class TestUnixConnect(unittest.TestCase):
                 unix_connect.get_display(display)
 
     def test_get_socket(self):
+
         class FakeSocket(object):
             def fileno(self):
                 return 42
         calls = []
         def _get_socket(socket_type, raises, *params):
-            calls.append(('_get_%s_socket' % socket_type,) + params)
+            calls.append((f'_get_{socket_type}_socket', ) + params)
             if raises:
                 raise socket.error()
             return FakeSocket()
+
         def path_exists(returns, path):
             calls.append(('os.path.exists', path))
             return returns
+
         def ensure_not_inheritable(*args):
             calls.append(('ensure_not_inheritable',) + args)
+
         for params, allow_unix, unix_addr_exists, allow_tcp, expect_connection_error, expected_calls in (
             # Successful explicit TCP socket connection.
             (('tcp/host:6', None, 'host', 6), False, False, True, False, [
@@ -135,13 +139,13 @@ class TestUnixConnect(unittest.TestCase):
             ]),
         ):
             with \
-                    patch('Xlib.support.unix_connect._get_unix_socket',
+                        patch('Xlib.support.unix_connect._get_unix_socket',
                        partial(_get_socket, 'unix', not allow_unix)), \
-                    patch('Xlib.support.unix_connect._get_tcp_socket',
+                        patch('Xlib.support.unix_connect._get_tcp_socket',
                           partial(_get_socket, 'tcp', not allow_tcp)), \
-                    patch('os.path.exists',
+                        patch('os.path.exists',
                           partial(path_exists, unix_addr_exists)), \
-                    patch('Xlib.support.unix_connect._ensure_not_inheritable', ensure_not_inheritable):
+                        patch('Xlib.support.unix_connect._ensure_not_inheritable', ensure_not_inheritable):
                 del calls[:]
                 if expect_connection_error:
                     with self.assertRaises(DisplayConnectionError):

@@ -45,10 +45,14 @@ local_dpy = display.Display()
 record_dpy = display.Display()
 
 def lookup_keysym(keysym):
-    for name in dir(XK):
-        if name[:3] == "XK_" and getattr(XK, name) == keysym:
-            return name[3:]
-    return "[%d]" % keysym
+    return next(
+        (
+            name[3:]
+            for name in dir(XK)
+            if name[:3] == "XK_" and getattr(XK, name) == keysym
+        ),
+        "[%d]" % keysym,
+    )
 
 def record_callback(reply):
     if reply.category != record.FromServer:
@@ -69,9 +73,9 @@ def record_callback(reply):
 
             keysym = local_dpy.keycode_to_keysym(event.detail, 0)
             if not keysym:
-                print("KeyCode%s" % pr, event.detail)
+                print(f"KeyCode{pr}", event.detail)
             else:
-                print("KeyStr%s" % pr, lookup_keysym(keysym))
+                print(f"KeyStr{pr}", lookup_keysym(keysym))
 
             if event.type == X.KeyPress and keysym == XK.XK_Escape:
                 local_dpy.record_disable_context(ctx)

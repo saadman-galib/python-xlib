@@ -215,19 +215,13 @@ class Drawable(resource.Resource):
         if image.mode == '1':
             format = X.XYBitmap
             depth = 1
-            if self.display.info.bitmap_format_bit_order == 0:
-                rawmode = '1;R'
-            else:
-                rawmode = '1'
+            rawmode = '1;R' if self.display.info.bitmap_format_bit_order == 0 else '1'
             pad = self.display.info.bitmap_format_scanline_pad
             stride = roundup(width, pad) >> 3
         elif image.mode == 'RGB':
             format = X.ZPixmap
             depth = 24
-            if self.display.info.image_byte_order == 0:
-                rawmode = 'BGRX'
-            else:
-                rawmode = 'RGBX'
+            rawmode = 'BGRX' if self.display.info.image_byte_order == 0 else 'RGBX'
             pad = self.display.info.bitmap_format_scanline_pad
             unit = self.display.info.bitmap_format_scanline_unit
             stride = roundup(width * unit, pad) >> 3
@@ -235,7 +229,7 @@ class Drawable(resource.Resource):
             raise ValueError('Unknown data format')
 
         maxlen = (self.display.info.max_request_length << 2) \
-                 - request.PutImage._request.static_size
+                     - request.PutImage._request.static_size
         split = maxlen // stride
 
         x1 = 0
@@ -244,14 +238,11 @@ class Drawable(resource.Resource):
 
         while y1 < height:
             h = min(height, split)
-            if h < height:
-                subimage = image.crop((x1, y1, x2, y1 + h))
-            else:
-                subimage = image
+            subimage = image.crop((x1, y1, x2, y1 + h)) if h < height else image
             w, h = subimage.size
             data = subimage.tobytes("raw", rawmode, stride, 0)
             self.put_image(gc, x, y, w, h, format, depth, 0, data)
-            y1 = y1 + h
+            y1 += h
             y = y + h
 
 
@@ -469,8 +460,7 @@ class Window(Drawable):
             return None
 
     def get_full_property(self, property, property_type, sizehint = 10):
-        prop = self.get_property(property, property_type, 0, sizehint)
-        if prop:
+        if prop := self.get_property(property, property_type, 0, sizehint):
             val = prop.value
             if prop.bytes_after:
                 prop = self.get_property(property, property_type, sizehint,
@@ -685,10 +675,7 @@ class Window(Drawable):
         if value is None:
             return None
         parts = value.split('\0')
-        if len(parts) < 2:
-            return None
-        else:
-            return parts[0], parts[1]
+        return None if len(parts) < 2 else (parts[0], parts[1])
 
     def set_wm_transient_for(self, window, onerror = None):
         self.change_property(Xatom.WM_TRANSIENT_FOR, Xatom.WINDOW,
@@ -699,9 +686,8 @@ class Window(Drawable):
         d = self.get_property(Xatom.WM_TRANSIENT_FOR, Xatom.WINDOW, 0, 1)
         if d is None or d.format != 32 or len(d.value) < 1:
             return None
-        else:
-            cls = self.display.get_resource_class('window', Window)
-            return cls(self.display, d.value[0])
+        cls = self.display.get_resource_class('window', Window)
+        return cls(self.display, d.value[0])
 
 
     def set_wm_protocols(self, protocols, onerror = None):
@@ -711,10 +697,7 @@ class Window(Drawable):
 
     def get_wm_protocols(self):
         d = self.get_full_property(self.display.get_atom('WM_PROTOCOLS'), Xatom.ATOM)
-        if d is None or d.format != 32:
-            return []
-        else:
-            return d.value
+        return [] if d is None or d.format != 32 else d.value
 
     def set_wm_colormap_windows(self, windows, onerror = None):
         self.change_property(self.display.get_atom('WM_COLORMAP_WINDOWS'),
@@ -727,10 +710,9 @@ class Window(Drawable):
                                    Xatom.WINDOW)
         if d is None or d.format != 32:
             return []
-        else:
-            cls = self.display.get_resource_class('window', Window)
-            return map(lambda i, d = self.display, c = cls: c(d, i),
-                       d.value)
+        cls = self.display.get_resource_class('window', Window)
+        return map(lambda i, d = self.display, c = cls: c(d, i),
+                   d.value)
 
 
     def set_wm_client_machine(self, name, onerror = None):

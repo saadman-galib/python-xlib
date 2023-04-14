@@ -26,6 +26,7 @@ additional capability is to match against regular expressions for atoms
 
 '''
 
+
 # Python 2/3 compatibility.
 from __future__ import print_function
 
@@ -43,11 +44,7 @@ from Xlib import display, error
 from optparse import OptionParser
 
 
-if PY2:
-    integer_type = long
-else:
-    integer_type = int
-
+integer_type = long if PY2 else int
 parser = OptionParser()
 parser.add_option("-d","--display",dest="display",help="This option specifies the X server to which to connect",metavar="dpy",default=None)
 parser.add_option("-n","--name",dest="name",help="This option specifies the name of an atom to list.  If the atom does  not  exist,  a  message  will  be printed on the standard error.",metavar="string",default=None)
@@ -66,12 +63,10 @@ def print_atom(print_format,atom,value):
     print(print_format%(atom,value))
 
 def list_atoms(d,re_obj,low,high):
-    while(low <= high):
+    while (low <= high):
         try:
             val = d.get_atom_name(low)
-            if (re_obj == None) :
-                print_atom(options.format,low,val)
-            elif re_obj.match(val) != None:
+            if re_obj is None or re_obj != None and re_obj.match(val) != None:
                 print_atom(options.format,low,val)
             low += 1
         except:
@@ -83,7 +78,9 @@ if options.name != None:
         val = d.get_atom_name(atom)
         print_atom(options.format,atom,val)
     except:
-        sys.stderr.write('xlsatoms:  no atom named "%s" on server "%s"'%(options.name,options.display))
+        sys.stderr.write(
+            f'xlsatoms:  no atom named "{options.name}" on server "{options.display}"'
+        )
         sys.stderr.write("\n")
         sys.exit(1)
     sys.exit(0)
@@ -92,14 +89,6 @@ rangeVals = options.range.split("-")
 if rangeVals[0] != "":
     low = integer_type(rangeVals[0])
 
-if rangeVals[1] != "":
-    high = integer_type(rangeVals[1])
-else:
-    high = MAXSIZE
-
-if options.match_re != None:
-    re_obj = re.compile(options.match_re)
-else:
-    re_obj = None
-
+high = integer_type(rangeVals[1]) if rangeVals[1] != "" else MAXSIZE
+re_obj = re.compile(options.match_re) if options.match_re != None else None
 list_atoms(d,re_obj,low,high)

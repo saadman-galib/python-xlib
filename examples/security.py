@@ -55,16 +55,18 @@ def main(argv):
 
     display = Display()
 
-    if not display.has_extension('SECURITY'):
-        if display.query_extension('SECURITY') is None:
-            print('SECURITY extension not supported', file=sys.stderr)
-            return 1
+    if (
+        not display.has_extension('SECURITY')
+        and display.query_extension('SECURITY') is None
+    ):
+        print('SECURITY extension not supported', file=sys.stderr)
+        return 1
 
     security_version = display.security_query_version()
-    print('SECURITY version %s.%s' % (
-      security_version.major_version,
-      security_version.minor_version,
-    ), file=sys.stderr)
+    print(
+        f'SECURITY version {security_version.major_version}.{security_version.minor_version}',
+        file=sys.stderr,
+    )
 
     if opts.generate:
         kwargs = {}

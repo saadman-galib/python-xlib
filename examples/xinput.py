@@ -47,13 +47,9 @@ def print_hierarchy_changed_event(event):
 
 
 def print_info(info):
-    print('  <deviceid=%s attachment=%s type=%s enabled=%s flags=%s>' % (
-        info.deviceid,
-        info.attachment,
-        info.type,
-        info.enabled,
-        info.flags,
-        ))
+    print(
+        f'  <deviceid={info.deviceid} attachment={info.attachment} type={info.type} enabled={info.enabled} flags={info.flags}>'
+    )
 
 
 def main(argv):

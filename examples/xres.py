@@ -33,12 +33,12 @@ from Xlib.ext import res as XRes
 
 def check_ext(disp, extname, version):
     if disp.query_extension(extname) is None:
-        raise AssertionError("Server has {} extension".format(extname))
+        raise AssertionError(f"Server has {extname} extension")
 
     r = disp.res_query_version()
     if (r.server_major, r.server_minor) < version:
         raise AssertionError(
-            "Server has requested version {} of {} extension".format(version, extname)
+            f"Server has requested version {version} of {extname} extension"
         )
 
 
@@ -53,21 +53,21 @@ def query_client_id(display, wid):
 
 
 def print_client_info(disp, client):
-    print("client: {}".format(client))
+    print(f"client: {client}")
 
     resources = disp.res_query_client_resources(client)
     rc = [r.count for r in resources.types]
-    print("\tresouces: {} resources of {} types".format(sum(rc), len(rc)))
+    print(f"\tresouces: {sum(rc)} resources of {len(rc)} types")
 
     pb = disp.res_query_client_pixmap_bytes(client)
-    print("\tpixmaps: {} bytes {} overflow".format(pb.bytes, pb.bytes_overflow))
+    print(f"\tpixmaps: {pb.bytes} bytes {pb.bytes_overflow} overflow")
 
     pid = query_client_id(disp, client)
-    print("\tpid: {}".format(pid))
+    print(f"\tpid: {pid}")
 
     rb = disp.res_query_resource_bytes(client, [{"resource": 0, "type": 0}])
     sizes = [s.size.bytes for s in rb.sizes]
-    print("\t{} resources consume {} bytes".format(len(sizes), sum(sizes)))
+    print(f"\t{len(sizes)} resources consume {sum(sizes)} bytes")
 
 
 def main():
@@ -75,7 +75,7 @@ def main():
     check_ext(display, XRes.extname, (1, 2))
 
     clients = display.res_query_clients().clients
-    print("{} clients connected to the server".format(len(clients)))
+    print(f"{len(clients)} clients connected to the server")
 
     for client in clients:
         print_client_info(display, client.resource_base)
